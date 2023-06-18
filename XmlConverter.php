@@ -2,28 +2,21 @@
 
 $xmlString = '
 <xml xmlns="https://developers.google.com/blockly/xml">
-  <block type="menu" id="MUuB)i/fh6)O+5oH+d!l" x="175" y="97">
-    <field name="name">1</field>
-    <statement name="items">
-      <block type="item" id="=aME%v8;4ZKl@E1xS0?]">
-        <field name="text">цукцуа</field>
-        <field name="href">/</field>
-        <values name="properties">
-          <block type="is_show" id="]{YEaC0iJ4/Co1rKVK.-">
-            <field name="value">true</field>
-          </block>
-        </values>
+  <block type="start" id="KYmqnsI).iwj_0iIIZ(M" x="429" y="217">
+    <field name="selector">ul&gt;li.item</field>
+    <next>
+      <block type="duplicate" id="`|ayk)lp~ICkhmC)!INA">
+        <next>
+          <block type="duplicate" id="t-A[Lf/UtOa}b4atf;9_"></block>
+        </next>
       </block>
-    </statement>
+    </next>
   </block>
-  <block type="menu" id="eu*m7|fb}k]iTgc`sk]e" x="773" y="113">
-    <field name="name">2</field>
-    <statement name="items">
-      <block type="item" id="fb=~#Sz-_oJt:5oT-AhE">
-        <field name="text">ппппп</field>
-        <field name="href">/</field>
-      </block>
-    </statement>
+  <block type="start" id="KX:6Su/%rhZM./Y4R*`4" x="802" y="211">
+    <field name="selector">*.class</field>
+    <next>
+      <block type="duplicate" id="cDkr9o-JbAnC`sTYfeWI"></block>
+    </next>
   </block>
 </xml>';
 
@@ -38,9 +31,9 @@ class XmlConverter
     }
 
     /**
-     * Loads an XML string.
+     * Загружает XML-строку.
      *
-     * @param string $xmlString The XML string.
+     * @param string $xmlString XML-строка.
      */
     public function loadXmlString(string $xmlString): void
     {
@@ -48,17 +41,17 @@ class XmlConverter
     }
 
     /**
-     * Converts XML to a multidimensional array.
+     * Преобразует XML в многомерный массив.
      *
-     * @param DOMElement $element The XML element.
+     * @param DOMElement $element XML-элемент.
      *
-     * @return array An array containing data from the XML.
+     * @return array Массив с данными из XML.
      */
     public function convertXmlToArray(DOMElement $element): array
     {
         $array = [];
 
-        // Process element attributes
+        // Обрабатываем атрибуты элемента
         if ($element->hasAttributes()) {
             $attributes = $element->attributes;
 
@@ -67,11 +60,9 @@ class XmlConverter
             }
         }
 
-        // Process child elements
+        // Обрабатываем дочерние элементы
         if ($element->hasChildNodes()) {
-            $children = $element->childNodes;
-
-            foreach ($children as $child) {
+            foreach ($element->childNodes as $child) {
                 if ($child->nodeType === XML_ELEMENT_NODE) {
                     $nodeName = $child->nodeName;
                     $nodeValue = $this->convertXmlToArray($child);
@@ -86,23 +77,17 @@ class XmlConverter
             }
         }
 
-        // Process text content of the element
+        // Обрабатываем текстовое содержимое элемента
         if ($element->hasChildNodes()) {
-            $textNodes = array_filter(
-                iterator_to_array($element->childNodes),
-                function ($node) {
-                    return $node->nodeType === XML_TEXT_NODE;
+            $text = '';
+            foreach ($element->childNodes as $child) {
+                if ($child->nodeType === XML_TEXT_NODE) {
+                    $text .= $child->nodeValue;
                 }
-            );
-
-            if (count($textNodes) > 1) {
-                $values = [];
-                foreach ($textNodes as $textNode) {
-                    $values[] = trim($textNode->nodeValue);
-                }
-                $array['value'] = $values;
-            } elseif (count($textNodes) === 1) {
-                $array['value'] = trim($textNodes[0]->nodeValue);
+            }
+            $text = trim($text);
+            if (!empty($text)) {
+                $array['value'] = $text;
             }
         }
 
@@ -110,11 +95,11 @@ class XmlConverter
     }
 
     /**
-     * Recursively processes the block structure.
+     * Рекурсивно обрабатывает структуру блоков.
      *
-     * @param array $structure The block structure.
+     * @param array $structure Структура блоков.
      *
-     * @return array An array with the processed block structure.
+     * @return array Массив с обработанной структурой блоков.
      */
     public function processBlocks(array $structure): array
     {
@@ -130,8 +115,7 @@ class XmlConverter
         } else {
             $value = $structure['block'];
             if (isset($value['statement'])) {
-                $array = $this->processBlocks($value['statement']);
-                $value['statement'] = $array;
+                $value['statement'] = $this->processBlocks($value['statement']);
             }
             $result[] = $value;
             if (isset($value['next'])) {
@@ -145,50 +129,52 @@ class XmlConverter
     }
 
     /**
-     * Converts the block structure to a tree structure.
+     * Преобразует структуру блоков в древовидную структуру.
      *
-     * @param array $structure The block structure.
+     * @param array $structure Структура блоков.
      *
-     * @return array A tree structure of blocks.
+     * @return array Древовидная структура блоков.
      */
     public function createTree(array $structure): array
     {
         $result = [];
 
         if (isset($structure['block'])) {
-            if (isset($structure['name'])) {
-                $result['name'] = $structure['name'];
-            }
+            if (isset($structure['block'][0])) {
+                foreach ($structure['block'] as $block) {
+                    $result[] = $this->createTree(['block' => $block]);
+                }
+            } else {
+                if (isset($structure['name'])) {
+                    $result['name'] = $structure['name'];
+                }
 
-            $result['block'] = [];
+                $result['block'] = [];
 
-            if (isset($result['block'][0])) {
-                foreach ($result['block'] as $value) {
+                if (isset($structure['block'][0])) {
+                    foreach ($structure['block'] as $value) {
+                        if (isset($value['statement'])) {
+                            $value['statement'] = $this->createTree($value['statement']);
+                        }
+                        $result['block'][] = $value;
+                    }
+                } else {
+                    $value = $structure['block'];
                     if (isset($value['statement'])) {
                         $value['statement'] = $this->createTree($value['statement']);
                     }
-                    $result['block'][] = $value;
-                }
-            } else {
-                $value = $structure['block'];
-                if (isset($value['statement'])) {
-                    $array = $this->createTree($value['statement']);
-                    $value['statement'] = $array;
-                }
-                if (isset($value[0])) {
-                    foreach ($value as $item) {
-                        $result['block'][] = $item;
+                    if (isset($value[0])) {
+                        foreach ($value as $item) {
+                            $result['block'][] = $item;
+                        }
+                    } else {
+                        $result['block'][] = $value;
                     }
-                }
-                else {
-                    $result['block'][] = $value;
-                }
 
-                if (isset($value['next'])) {
-                    $array = $this->createTree($value['next']);
-                    unset($result['block'][count($result['block']) - 1]['next']);
-                    foreach ($this->processBlocks($array) as $item) {
-                        $result['block'][] = $item;
+                    if (isset($value['next'])) {
+                        $array = $this->createTree($value['next']);
+                        unset($result['block'][count($result['block']) - 1]['next']);
+                        $result['block'] = array_merge($result['block'], $this->processBlocks($array));
                     }
                 }
             }
@@ -198,16 +184,15 @@ class XmlConverter
     }
 
     /**
-     * Converts XML to an array and outputs the result.
+     * Преобразует XML в массив и выводит результат.
      */
-    public function convertXmlToTree(): void
+    public function convertXmlToTree(): array
     {
         $root = $this->dom->documentElement;
         $resultArray = $this->convertXmlToArray($root);
         $tree = $this->createTree($resultArray);
 
-        print_r($resultArray);
-        print_r($tree);
+        return $tree;
     }
 }
 
@@ -215,4 +200,4 @@ class XmlConverter
 
 $converter = new XmlConverter();
 $converter->loadXmlString($xmlString);
-$converter->convertXmlToTree();
+print_r($converter->convertXmlToTree());
