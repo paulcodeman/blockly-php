@@ -1,26 +1,5 @@
 <?php
 
-$xmlString = '
-<xml xmlns="https://developers.google.com/blockly/xml">
-  <block type="start" id="KYmqnsI).iwj_0iIIZ(M" x="429" y="217">
-    <field name="selector">ul&gt;li.item</field>
-    <next>
-      <block type="duplicate" id="`|ayk)lp~ICkhmC)!INA">
-        <next>
-          <block type="duplicate" id="t-A[Lf/UtOa}b4atf;9_"></block>
-        </next>
-      </block>
-    </next>
-  </block>
-  <block type="start" id="KX:6Su/%rhZM./Y4R*`4" x="802" y="211">
-    <field name="selector">*.class</field>
-    <next>
-      <block type="duplicate" id="cDkr9o-JbAnC`sTYfeWI"></block>
-    </next>
-  </block>
-</xml>';
-
-
 class XmlConverter
 {
     private $dom;
@@ -62,32 +41,30 @@ class XmlConverter
 
         // Обрабатываем дочерние элементы
         if ($element->hasChildNodes()) {
+            $text = '';
             foreach ($element->childNodes as $child) {
                 if ($child->nodeType === XML_ELEMENT_NODE) {
                     $nodeName = $child->nodeName;
                     $nodeValue = $this->convertXmlToArray($child);
 
-                    if (!isset($array[$nodeName])) {
+
+                    if (empty($array[$nodeName])) {
                         $array[$nodeName] = $nodeValue;
                     } else {
-                        $array[$nodeName] = [$array[$nodeName]];
+                        if (empty($array[$nodeName][0])) {
+                            $array[$nodeName] = [$array[$nodeName]];
+                        }
                         $array[$nodeName][] = $nodeValue;
                     }
-                }
-            }
-        }
 
-        // Обрабатываем текстовое содержимое элемента
-        if ($element->hasChildNodes()) {
-            $text = '';
-            foreach ($element->childNodes as $child) {
-                if ($child->nodeType === XML_TEXT_NODE) {
+                }
+                elseif ($child->nodeType === XML_TEXT_NODE) {
                     $text .= $child->nodeValue;
                 }
             }
             $text = trim($text);
             if (!empty($text)) {
-                $array['value'] = $text;
+                $array['_'] = $text;
             }
         }
 
@@ -119,15 +96,12 @@ class XmlConverter
             }
             $result[] = $value;
             if (isset($value['next'])) {
-                $array = $this->processBlocks($value['next']);
-                unset($result[count($result) - 1]['next']);
-                $result[] = $array;
+                $result[] = $this->processBlocks($value['next']);
             }
         }
 
         return $result;
     }
-
     /**
      * Преобразует структуру блоков в древовидную структуру.
      *
@@ -191,13 +165,7 @@ class XmlConverter
         $root = $this->dom->documentElement;
         $resultArray = $this->convertXmlToArray($root);
         $tree = $this->createTree($resultArray);
-
         return $tree;
     }
 }
 
-// Использование класса
-
-$converter = new XmlConverter();
-$converter->loadXmlString($xmlString);
-print_r($converter->convertXmlToTree());
